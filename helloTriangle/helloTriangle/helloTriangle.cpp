@@ -23,6 +23,7 @@ const short int NUMBER_OF_TRIANGLES = 3;
 const short int NUMBER_OF_SHADERS = 3;
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 800;
+short int wireframe = 0; // 0 -> fill; 1 -> wireframe
 
 const char* vertexShaderSource = "#version 330 core\n"
 "layout (location = 0) in vec3 aPos;\n"
@@ -52,6 +53,9 @@ const char* fragmentShaderSources[] = {
     "   FragColor = vec4(0.0f, 0.0f, 1.0f, 1.0f);\n" // Blue
     "}\n\0",
 };
+
+// input state
+int lastInputState = -99;
 
 int main()
 {
@@ -188,8 +192,7 @@ int main()
         glBindVertexArray(0);
     }
 
-    // uncomment this call to draw in wireframe polygons.
-    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
 
     // render loop
     // -----------
@@ -201,6 +204,11 @@ int main()
 
         // render
         // ------
+        
+        // Draw wireframe?
+        glPolygonMode(GL_FRONT_AND_BACK, wireframe == 1 ? GL_LINE : GL_FILL);
+
+        // Background Color
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
@@ -241,6 +249,25 @@ void processInput(GLFWwindow* window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+    else
+    {   
+        // A key press event could exist across several consecutive rendering loops
+        // Only toggle the wireframe option when there is a state change
+        int spaceKeyState = glfwGetKey(window, GLFW_KEY_SPACE);
+        if (spaceKeyState == GLFW_PRESS)
+        {
+            if (lastInputState != GLFW_PRESS)
+            {
+                lastInputState = GLFW_PRESS;
+                wireframe = 1 - wireframe;
+            }
+        }
+        else
+        {
+            if (lastInputState != GLFW_RELEASE) lastInputState = GLFW_RELEASE;
+        }
+           
+    }
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
