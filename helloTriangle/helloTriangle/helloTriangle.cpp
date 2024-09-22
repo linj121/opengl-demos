@@ -20,8 +20,9 @@ void processInput(GLFWwindow* window);
 
 // settings
 const short int NUMBER_OF_TRIANGLES = 3;
+const short int NUMBER_OF_SHADERS = 3;
 const unsigned int SCR_WIDTH = 800;
-const unsigned int SCR_HEIGHT = 600;
+const unsigned int SCR_HEIGHT = 800;
 
 const char* vertexShaderSource = "#version 330 core\n"
 "layout (location = 0) in vec3 aPos;\n"
@@ -29,12 +30,28 @@ const char* vertexShaderSource = "#version 330 core\n"
 "{\n"
 "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
 "}\0";
-const char* fragmentShaderSource = "#version 330 core\n"
-"out vec4 FragColor;\n"
-"void main()\n"
-"{\n"
-"   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
-"}\n\0";
+const char* fragmentShaderSources[] = {
+    "#version 330 core\n"
+    "out vec4 FragColor;\n"
+    "void main()\n"
+    "{\n"
+    "   FragColor = vec4(1.0f, 0.0f, 0.0f, 1.0f);\n" // Red
+    "}\n\0",
+
+    "#version 330 core\n"
+    "out vec4 FragColor;\n"
+    "void main()\n"
+    "{\n"
+    "   FragColor = vec4(0.0f, 1.0f, 0.0f, 1.0f);\n" // Green
+    "}\n\0",
+
+    "#version 330 core\n"
+    "out vec4 FragColor;\n"
+    "void main()\n"
+    "{\n"
+    "   FragColor = vec4(0.0f, 0.0f, 1.0f, 1.0f);\n" // Blue
+    "}\n\0",
+};
 
 int main()
 {
@@ -51,7 +68,7 @@ int main()
 
     // glfw window creation
     // --------------------
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "UrMOM", NULL, NULL);
     if (window == NULL)
     {
         std::cout << "Failed to create GLFW window" << std::endl;
@@ -85,30 +102,41 @@ int main()
         glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
         std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
     }
-    // fragment shader
-    unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-    glCompileShader(fragmentShader);
-    // check for shader compile errors
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-    if (!success)
+
+    unsigned int fragmentShaders[NUMBER_OF_SHADERS]{};
+    for (int i = 0; i < NUMBER_OF_SHADERS; i++)
     {
-        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
+        // fragment shader
+        fragmentShaders[i] = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(fragmentShaders[i], 1, &fragmentShaderSources[i], NULL);
+        glCompileShader(fragmentShaders[i]);
+        // check for shader compile errors
+        glGetShaderiv(fragmentShaders[i], GL_COMPILE_STATUS, &success);
+        if (!success)
+        {
+            glGetShaderInfoLog(fragmentShaders[i], 512, NULL, infoLog);
+            std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
+        }
     }
+
     // link shaders
-    unsigned int shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-    // check for linking errors
-    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-    if (!success) {
-        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+    unsigned int shaderPrograms[NUMBER_OF_SHADERS]{};
+    for (int i = 0; i < NUMBER_OF_SHADERS; i++)
+    {
+        shaderPrograms[i] = glCreateProgram();
+        glAttachShader(shaderPrograms[i], vertexShader);
+        glAttachShader(shaderPrograms[i], fragmentShaders[i]);
+        glLinkProgram(shaderPrograms[i]);
+        // check for linking errors
+        glGetProgramiv(shaderPrograms[i], GL_LINK_STATUS, &success);
+        if (!success) {
+            glGetProgramInfoLog(shaderPrograms[i], 512, NULL, infoLog);
+            std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+        }
     }
+    // clean ups
+    for (int i = 0; i < NUMBER_OF_SHADERS; i++) glDeleteShader(fragmentShaders[i]);
     glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
 
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
@@ -177,10 +205,10 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT);
 
         // draw our first triangle
-        glUseProgram(shaderProgram);
-
         for (int i = 0; i < NUMBER_OF_TRIANGLES; i++)
         {
+            glUseProgram(shaderPrograms[i % NUMBER_OF_SHADERS]);
+
             glBindVertexArray(VAOs[i]);
             glDrawArrays(GL_TRIANGLES, 0, 3);
             glBindVertexArray(0);
@@ -199,7 +227,7 @@ int main()
     glDeleteVertexArrays(1, VAOs);
     glDeleteBuffers(1, VBOs);
     //glDeleteBuffers(1, &EBO);
-    glDeleteProgram(shaderProgram);
+    for (int i = 0; i < NUMBER_OF_SHADERS; i++) glDeleteProgram(shaderPrograms[i]);
 
     // glfw: terminate, clearing all previously allocated GLFW resources.
     // ------------------------------------------------------------------
